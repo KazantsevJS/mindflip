@@ -1,0 +1,75 @@
+.carousel {
+  position: relative;
+  width: 100%;
+  height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0;
+  overflow: visible;
+}
+
+.carousel__wrapper {
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 100px 0;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+}
+
+.carousel__wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.carousel__track {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: 100%;
+  padding: 0 calc(50% - 150px);
+  gap: 40px;
+}
+
+.carousel__item-wrapper {
+  flex-shrink: 0;
+  scroll-snap-align: center;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.carousel__item-wrapper:hover {
+  transform: scale(1.05);
+}
+
+.carousel__item-wrapper:active {
+  transform: scale(0.95);
+}
+
+.carousel__item {
+  width: 300px;
+  height: 300px;
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--card-text-color);
+  font-size: 48px;
+  font-weight: 600;
+  box-shadow: var(--box-shadow);
+  transition: all 0.3s ease;
+  user-select: none;
+}
+
+.carousel__item--selected {
+  transform: scale(1.2);
+  box-shadow: var(--box-shadow-selected);
+  z-index: 10;
+}
+
+.carousel__item-name {
+  text-align: center;
+  padding: 10px;
+  word-break: break-word;
+}

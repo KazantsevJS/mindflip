@@ -1,0 +1,93 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.form__group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.form__label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.form__input {
+  padding: 12px 16px;
+  border: 2px solid var(--black-border);
+  border-radius: 8px;
+  font-size: 16px;
+  font-family: "DM Sans", sans-serif;
+  background-color: var(--page-bg);
+  color: var(--text-color);
+  transition: border-color 0.2s ease;
+  width: calc(150px * 3 + 10px * 2);
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.form__input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.form__textarea {
+  padding: 12px 16px;
+  border: 2px solid var(--black-border);
+  border-radius: 8px;
+  font-size: 16px;
+  font-family: "DM Sans", sans-serif;
+  background-color: var(--page-bg);
+  color: var(--text-color);
+  resize: vertical;
+  min-height: 100px;
+  transition: border-color 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.form__textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.form__actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-left: auto;
+  margin-right: auto;
+  gap: 10px;
+  margin-top: 10px;
+  width: calc(150px * 3 + 10px * 2);
+  max-width: 100%;
+}
+
+.form__actions .btn,
+.form__actions .btn-outline {
+  min-width: 150px;
+  height: 50px;
+  font-size: 16px;
+  font-weight: 500;
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+.delete-confirmation {
+  padding: 20px 0;
+}
+
+.delete-confirmation p {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-color);
+  margin-bottom: 24px;
+}
