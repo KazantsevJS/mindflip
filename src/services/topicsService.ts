@@ -66,7 +66,7 @@ export const createTopic = async (data: CreateTopic): Promise<Topic> => {
   const lastIdResult = db.exec("SELECT last_insert_rowid() as id");
   const lastId = lastIdResult[0].values[0][0] as number;
 
-  saveDatabase();
+  await saveDatabase();
 
   const createdTopic = await getTopicById(lastId);
   if (!createdTopic) {
@@ -110,7 +110,7 @@ export const updateTopic = async (
 
   db.run(`UPDATE topics SET ${updates.join(", ")} WHERE id = ?`, values);
 
-  saveDatabase();
+  await saveDatabase();
 
   const updatedTopic = await getTopicById(id);
   if (!updatedTopic) {
@@ -129,5 +129,5 @@ export const deleteTopic = async (id: number): Promise<void> => {
   }
 
   db.run(`DELETE FROM topics WHERE id = ?`, [id] as SqlValue[]);
-  saveDatabase();
+  await saveDatabase();
 };

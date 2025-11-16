@@ -72,7 +72,7 @@ export const createCard = async (data: CreateCard): Promise<Card> => {
   const lastIdResult = db.exec("SELECT last_insert_rowid() as id");
   const lastId = lastIdResult[0].values[0][0] as number;
 
-  saveDatabase();
+  await saveDatabase();
 
   const createdCard = await getCardById(lastId);
   if (!createdCard) {
@@ -141,7 +141,7 @@ export const updateCard = async (
 
   db.run(`UPDATE cards SET ${updates.join(", ")} WHERE id = ?`, values);
 
-  saveDatabase();
+  await saveDatabase();
 
   const updatedCard = await getCardById(id);
   if (!updatedCard) {
@@ -160,7 +160,7 @@ export const deleteCard = async (id: number): Promise<void> => {
   }
 
   db.run(`DELETE FROM cards WHERE id = ?`, [id] as SqlValue[]);
-  saveDatabase();
+  await saveDatabase();
 };
 
 export const markCardReviewed = async (
