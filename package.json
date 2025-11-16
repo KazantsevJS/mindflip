@@ -8,8 +8,9 @@
     "dev": "concurrently \"npm run dev:vite\" \"wait-on http://localhost:5173 && npm run dev:electron\"",
     "dev:vite": "vite",
     "dev:electron": "cross-env NODE_ENV=development electron .",
-    "build": "npm run build:vite && npm run build:electron",
+    "build": "npm run build:vite && npm run build:copy-wasm && npm run build:electron",
     "build:vite": "vite build",
+    "build:copy-wasm": "node scripts/copy-wasm.js",
     "build:electron": "electron-builder",
     "preview": "vite preview"
   },
@@ -48,7 +49,8 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
-      "node_modules/**/*"
+      "node_modules/sql.js/dist/sql-wasm.wasm",
+      "node_modules/sql.js/dist/sql-wasm.js"
     ],
     "mac": {
       "category": "public.app-category.education",

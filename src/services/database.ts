@@ -1,17 +1,13 @@
 import initSqlJs from "sql.js";
 import type { Database } from "sql.js";
-import type * as Path from "path";
-import type * as Fs from "fs";
-import type { app as ElectronApp } from "electron";
 
 const isElectron =
   typeof process !== "undefined" && !!process.versions?.electron;
 
-let path: typeof Path | null = null;
-let fs: typeof Fs | null = null;
-let electronApp: typeof ElectronApp | null = null;
+let path: any = null;
+let fs: any = null;
 
-const getRequire = (): NodeRequire => {
+const getRequire = (): NodeJS.Require => {
   if (typeof window !== "undefined" && (window as any).require) {
     return (window as any).require;
   }
@@ -19,6 +15,19 @@ const getRequire = (): NodeRequire => {
     return require;
   }
   throw new Error("require не доступен");
+};
+
+const getAppPathViaIPC = async (): Promise<string> => {
+  try {
+    const electron = getRequire()("electron");
+    if (electron && electron.ipcRenderer) {
+      const appPath = await electron.ipcRenderer.invoke("get-app-path");
+      return appPath;
+    }
+  } catch (error) {
+    console.error("Ошибка IPC:", error);
+  }
+  throw new Error("IPC недоступен");
 };
 
 const initNodeModules = () => {
@@ -29,25 +38,12 @@ const initNodeModules = () => {
   try {
     const requireFn = getRequire();
 
-    const pathModuleName = "path";
-    const fsModuleName = "fs";
-    const electronModuleName = "electron";
-
     if (!path) {
-      path = requireFn(pathModuleName);
+      path = requireFn("path");
     }
 
     if (!fs) {
-      fs = requireFn(fsModuleName);
-    }
-
-    if (!electronApp) {
-      try {
-        const electron = requireFn(electronModuleName);
-        electronApp = electron.app;
-      } catch (error) {
-        console.warn("Electron app не доступен:", error);
-      }
+      fs = requireFn("fs");
     }
   } catch (error) {
     console.error("Ошибка загрузки Node.js модулей:", error);
@@ -55,28 +51,52 @@ const initNodeModules = () => {
   }
 };
 
-const getDatabasePath = (): string => {
+const getDatabasePath = async (): Promise<string> => {
   initNodeModules();
 
   if (!path || !fs) {
     throw new Error("Node.js модули не загружены");
   }
 
-  if (process.env.NODE_ENV === "development") {
+  const isDevelopment = process.env.NODE_ENV === "development";
+
+  if (isDevelopment) {
     const dbDir = path.join(process.cwd(), "database");
     if (!fs.existsSync(dbDir)) {
       fs.mkdirSync(dbDir, { recursive: true });
     }
-
     return path.join(dbDir, "mindflip.db");
   }
 
-  if (!electronApp) {
-    throw new Error("База данных доступна только в Electron окружении");
+  try {
+    const electron = getRequire()("electron");
+    if (electron && electron.ipcRenderer) {
+      const userDataPath = await electron.ipcRenderer.invoke(
+        "get-user-data-path"
+      );
+      return path.join(userDataPath, "mindflip.db");
+    }
+  } catch (error) {
+    console.error("Ошибка получения userDataPath через IPC:", error);
   }
 
-  const userDataPath = electronApp.getPath("userData");
-  return path.join(userDataPath, "mindflip.db");
+  const resourcesPath = (process as any).resourcesPath;
+  if (resourcesPath) {
+    const userDataPath = path.join(
+      resourcesPath,
+      "..",
+      "..",
+      "Library",
+      "Application Support",
+      "MindFlip"
+    );
+    if (!fs.existsSync(userDataPath)) {
+      fs.mkdirSync(userDataPath, { recursive: true });
+    }
+    return path.join(userDataPath, "mindflip.db");
+  }
+
+  throw new Error("Не удалось определить путь к базе данных");
 };
 
 let db: Database | null = null;
@@ -95,13 +115,59 @@ export const getDatabase = async (): Promise<Database> => {
 
   if (!db) {
     if (!SQL) {
-      const wasmPath = path.join(
-        process.cwd(),
-        "node_modules",
-        "sql.js",
-        "dist",
-        "sql-wasm.wasm"
-      );
+      let wasmPath: string;
+      const isDevelopment = process.env.NODE_ENV === "development";
+
+      if (isDevelopment) {
+        wasmPath = path.join(
+          process.cwd(),
+          "node_modules",
+          "sql.js",
+          "dist",
+          "sql-wasm.wasm"
+        );
+      } else {
+        let appPath: string;
+        try {
+          appPath = await getAppPathViaIPC();
+        } catch (error) {
+          const resourcesPath = (process as any).resourcesPath;
+          if (resourcesPath) {
+            appPath = path.join(resourcesPath, "app");
+          } else {
+            appPath = process.cwd();
+          }
+        }
+
+        const possiblePaths = [
+          path.join(appPath, "dist", "sql-wasm.wasm"),
+          path.join(appPath, "node_modules", "sql.js", "dist", "sql-wasm.wasm"),
+        ];
+
+        const resourcesPath = (process as any).resourcesPath;
+        if (resourcesPath) {
+          possiblePaths.unshift(
+            path.join(resourcesPath, "app", "dist", "sql-wasm.wasm"),
+            path.join(
+              resourcesPath,
+              "app",
+              "node_modules",
+              "sql.js",
+              "dist",
+              "sql-wasm.wasm"
+            )
+          );
+        }
+
+        const foundPath = possiblePaths.find((p) => fs && fs.existsSync(p));
+        wasmPath = foundPath || possiblePaths[0];
+
+        if (!foundPath) {
+          throw new Error(
+            `WASM файл не найден по путям: ${possiblePaths.join(", ")}`
+          );
+        }
+      }
 
       let wasmBinary: ArrayBuffer | undefined = undefined;
 
@@ -115,7 +181,7 @@ export const getDatabase = async (): Promise<Database> => {
           wasmBinary = newArrayBuffer;
         } catch (error) {
           console.error("Не удалось загрузить WASM файл:", error);
-          throw new Error("WASM файл не найден");
+          throw new Error(`WASM файл не найден по пути: ${wasmPath}`);
         }
       } else {
         throw new Error(`WASM файл не найден по пути: ${wasmPath}`);
@@ -127,7 +193,7 @@ export const getDatabase = async (): Promise<Database> => {
       SQL = sqlModule;
     }
 
-    const dbPath = getDatabasePath();
+    const dbPath = await getDatabasePath();
     let fileBuffer: Uint8Array | null = null;
 
     if (fs.existsSync(dbPath)) {
@@ -147,7 +213,7 @@ export const getDatabase = async (): Promise<Database> => {
 
     initializeDatabase(db);
 
-    saveDatabase();
+    await saveDatabase();
   }
 
   if (!db) {
@@ -211,7 +277,7 @@ const initializeDatabase = (database: Database): void => {
   `);
 };
 
-export const saveDatabase = (): void => {
+export const saveDatabase = async (): Promise<void> => {
   if (!db || !isElectron) return;
 
   initNodeModules();
@@ -219,7 +285,7 @@ export const saveDatabase = (): void => {
   if (!path || !fs || !db) return;
 
   try {
-    const dbPath = getDatabasePath();
+    const dbPath = await getDatabasePath();
     const data = db.export();
     const buffer = Buffer.from(data);
     fs.writeFileSync(dbPath, buffer);
@@ -228,9 +294,9 @@ export const saveDatabase = (): void => {
   }
 };
 
-export const closeDatabase = (): void => {
+export const closeDatabase = async (): Promise<void> => {
   if (db) {
-    saveDatabase();
+    await saveDatabase();
     db.close();
     db = null;
   }
